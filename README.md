@@ -22,7 +22,7 @@ Boulevard’s Senior Engineer II – Quality role (service-boundary tests, flake
 | Flake triage helpers + bounded retry | `Testing.Flake` |
 | Explicit quarantine (exclude from merge gate) | `Testing.Quarantine` + `@tag :flaky` |
 | Mix quality gate aliases | `mix test.ci` / `mix quality.gate` |
-| GitHub Actions: cache, format, credo, exclude flaky | `.github/workflows/ci.yml` |
+| GitHub Actions: cache, format, credo, exclude flaky | `docs/github-actions-ci.yml` (copy to `.github/workflows/ci.yml` to enable Actions) |
 
 Domain sample is a tiny salon booking service (appointments, overlap detection, confirm/cancel) —
 close enough to appointment SaaS to keep stories concrete without pretending to be Boulevard’s product.
