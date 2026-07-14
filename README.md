@@ -44,6 +44,20 @@ Requires Elixir `~> 1.15` and OTP 26+.
 
 ---
 
+## Enable GitHub Actions
+
+The CI YAML lives at `docs/github-actions-ci.yml` because the current `gh` OAuth token lacks the `workflow` scope (GitHub blocks pushes that create `.github/workflows/*` without it).
+
+```bash
+gh auth refresh -h github.com -s workflow
+# remove the `.github/` line from .gitignore
+mkdir -p .github/workflows
+cp docs/github-actions-ci.yml .github/workflows/ci.yml
+git add .github .gitignore && git commit -m "Enable GitHub Actions quality gate" && git push
+```
+
+---
+
 ## Layout
 
 ```
