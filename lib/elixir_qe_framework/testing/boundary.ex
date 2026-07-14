@@ -25,7 +25,6 @@ defmodule ElixirQeFramework.Testing.Boundary do
   @doc """
   Validates a map against required keys and optional type predicates.
 
-  Example:
       assert_contract!(payload, [:id, :status], %{status: &is_atom/1})
   """
   @spec assert_contract!(map(), [atom()], map()) :: :ok
@@ -60,4 +59,33 @@ defmodule ElixirQeFramework.Testing.Boundary do
       status: appt.status
     }
   end
+
+  @doc """
+  Round-trips a payload through JSON to catch atom/string key drift —
+  same class of bug API clients hit in the wild.
+  """
+  @spec assert_json_roundtrip!(map()) :: map()
+  def assert_json_roundtrip!(payload) when is_map(payload) do
+    decoded =
+      payload
+      |> json_safe()
+      |> Jason.encode!()
+      |> Jason.decode!()
+
+    unless is_map(decoded) do
+      raise "json roundtrip did not produce a map: #{inspect(decoded)}"
+    end
+
+    decoded
+  end
+
+  defp json_safe(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
+  defp json_safe(%MapSet{} = set), do: MapSet.to_list(set) |> json_safe()
+
+  defp json_safe(map) when is_map(map) do
+    Map.new(map, fn {k, v} -> {k, json_safe(v)} end)
+  end
+
+  defp json_safe(list) when is_list(list), do: Enum.map(list, &json_safe/1)
+  defp json_safe(other), do: other
 end

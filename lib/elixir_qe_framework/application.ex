@@ -5,7 +5,7 @@ defmodule ElixirQeFramework.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      {ElixirQeFramework.BookingStore, %{}}
+      {ElixirQeFramework.BookingStore, name: ElixirQeFramework.BookingStore}
     ]
 
     opts = [strategy: :one_for_one, name: ElixirQeFramework.Supervisor]

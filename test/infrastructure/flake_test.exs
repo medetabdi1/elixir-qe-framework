@@ -21,22 +21,42 @@ defmodule ElixirQeFramework.Testing.FlakeTest do
     assert Agent.get(counter, & &1) == 3
   end
 
+  test "retry recovers from throw" do
+    {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+    result =
+      Flake.retry(2, fn ->
+        if Agent.get_and_update(counter, &{&1, &1 + 1}) == 0 do
+          throw(:transient)
+        else
+          :recovered
+        end
+      end)
+
+    assert result == :recovered
+  end
+
   test "timed returns elapsed milliseconds" do
     {value, ms} = Flake.timed(fn -> :done end)
     assert value == :done
     assert is_integer(ms) and ms >= 0
   end
 
-  test "classify maps messages to flake categories" do
-    assert Flake.classify("connection timed out") == :timing
-    assert Flake.classify("slot conflict detected") == :shared_state
-    assert Flake.classify("record not found") == :data_race
+  test "classify maps messages to flake categories (case-insensitive)" do
+    assert Flake.classify("connection TIMED OUT") == :timing
+    assert Flake.classify("slot Conflict detected") == :shared_state
+    assert Flake.classify("record Not Found") == :data_race
+    assert Flake.classify("possible RACE") == :ordering
     assert Flake.classify("something else") == :unknown
   end
 
-  test "quarantine report is non-empty string" do
-    assert is_binary(Quarantine.report())
-    assert Quarantine.report() =~ "quarantine:"
+  test "quarantine registry covers demo flaky module" do
+    assert Quarantine.quarantined?(
+             ElixirQeFramework.ExampleFlakyTest,
+             "example quarantine — always passes"
+           )
+
+    assert Quarantine.report() =~ "QE-0"
   end
 
   test "reporter emits scrape-friendly gate lines" do

@@ -1,6 +1,6 @@
 defmodule ElixirQeFramework.Testing.Factory do
   @moduledoc """
-  Deterministic test data factory.
+  Deterministic test data factory (ExMachina-style, dependency-free).
 
   Prefer factories over shared mutable fixtures — they make failures readable
   and keep suites free of accidental coupling.
@@ -38,6 +38,28 @@ defmodule ElixirQeFramework.Testing.Factory do
     base = ~U[2026-08-01 10:00:00Z]
     starts_at = DateTime.add(base, hours_offset * 3600, :second)
     appointment_attrs(Keyword.merge([starts_at: starts_at], overrides))
+  end
+
+  @doc """
+  Future slot relative to `Clock` — use in integration tests that reject past bookings.
+  """
+  @spec future_slot(non_neg_integer(), keyword()) :: keyword()
+  def future_slot(hours_ahead \\ 24, overrides \\ []) do
+    starts_at =
+      ElixirQeFramework.Clock.utc_now()
+      |> DateTime.add(hours_ahead * 3600, :second)
+      |> DateTime.truncate(:second)
+
+    appointment_attrs(Keyword.merge([starts_at: starts_at], overrides))
+  end
+
+  @doc """
+  Monotonic sequence integer — stable within a VM run, unique across builds.
+  Prefer explicit `:id` overrides when a test needs a fixed id.
+  """
+  @spec sequence(String.t()) :: String.t()
+  def sequence(prefix) when is_binary(prefix) do
+    prefix <> "_" <> unique_suffix()
   end
 
   defp unique_suffix do

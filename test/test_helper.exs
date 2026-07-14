@@ -1,9 +1,14 @@
 # Test tags:
-#   :integration — service-boundary / store tests (slower path)
+#   :integration — service-boundary / store tests
 #   :flaky — quarantined; excluded from merge gate via mix test.ci
-#   :unit — optional explicit tag (default = anything without :integration)
 
 ExUnit.start(exclude: [:flaky])
 
-# Ensure application (and BookingStore) is running for integration tests.
 {:ok, _} = Application.ensure_all_started(:elixir_qe_framework)
+
+# Fail CI prep if a flaky-tagged demo module loses its quarantine registry row.
+ElixirQeFramework.Testing.Quarantine.assert_registry_covers!([
+  ElixirQeFramework.ExampleFlakyTest
+])
+
+IO.puts(ElixirQeFramework.Testing.Quarantine.report())

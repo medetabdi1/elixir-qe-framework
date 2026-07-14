@@ -1,13 +1,13 @@
 # Elixir QE Framework
 
-Portfolio sample for **CI / test-infrastructure** ownership in Elixir — the same class of work as
-Boulevard’s Senior Engineer II – Quality role (service-boundary tests, flake containment, quality gates).
+Portfolio sample for **CI / test-infrastructure** ownership in Elixir: service-boundary tests, flake containment, async-safe isolation, and quality gates.
 
-> Correct frame: CI + unit/integration patterns engineer who ramps on Elixir ecosystems.  
-> Not claiming production Elixir shipping history — this repo *is* the ramp artifact.
+> Frame: CI + unit/integration patterns engineer ramping on Elixir.  
+> This repo is the ramp artifact — not a claim of prior production Elixir shipping.
 
-**Repo:** aimed at [medetabdi1/elixir-qe-framework](https://github.com/medetabdi1/elixir-qe-framework)  
-**Related:** [playwright-qe-portfolio](https://github.com/medetabdi1/playwright-qe-portfolio) (FE E2E)
+**Repo:** [medetabdi1/elixir-qe-framework](https://github.com/medetabdi1/elixir-qe-framework)  
+**Related:** [playwright-qe-portfolio](https://github.com/medetabdi1/playwright-qe-portfolio) (FE E2E)  
+**Deep dive:** [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)
 
 ---
 
@@ -15,17 +15,16 @@ Boulevard’s Senior Engineer II – Quality role (service-boundary tests, flake
 
 | Pattern | Where |
 |--------|--------|
-| Pure domain unit tests (fast, `async: true`) | `test/unit/appointment_test.exs` |
-| Service-boundary / contract-style integration | `test/integration/booking_service_test.exs` + `Testing.Boundary` |
-| Deterministic time (no wall-clock flake) | `Clock` + `test/unit/clock_test.exs` |
-| Factories over shared fixtures | `Testing.Factory` |
-| Flake triage helpers + bounded retry | `Testing.Flake` |
-| Explicit quarantine (exclude from merge gate) | `Testing.Quarantine` + `@tag :flaky` |
-| Mix quality gate aliases | `mix test.ci` / `mix quality.gate` |
-| GitHub Actions: cache, format, credo, exclude flaky | `docs/github-actions-ci.yml` (copy to `.github/workflows/ci.yml` to enable Actions) |
+| Pure domain unit tests (`async: true`) | `test/unit/appointment_test.exs` |
+| Service-boundary + JSON contract checks | `test/integration/` + `Testing.Boundary` |
+| Per-test GenServer isolation (async-safe) | `BookingStore.bind/1` + `DataCase` |
+| Deterministic time | `Clock.freeze/1` |
+| ExMachina-style factories | `Testing.Factory` |
+| Flake classify / hunt / quarantine registry | `Testing.Flake` + `Testing.Quarantine` |
+| Mix quality gates | `mix test.ci` / `mix quality.gate` / `mix test.flake.hunt` |
+| GitHub Actions | `.github/workflows/ci.yml` |
 
-Domain sample is a tiny salon booking service (appointments, overlap detection, confirm/cancel) —
-close enough to appointment SaaS to keep stories concrete without pretending to be Boulevard’s product.
+Domain: tiny salon booking (overlap detection, confirm/cancel, reject past starts).
 
 ---
 
@@ -33,28 +32,15 @@ close enough to appointment SaaS to keep stories concrete without pretending to 
 
 ```bash
 mix deps.get
-mix test                 # excludes :flaky by default (see test_helper.exs)
-mix test.unit            # unit only
-mix test.integration     # service-boundary only
-mix test --only flaky    # quarantined suite
+mix test                 # excludes :flaky by default
+mix test.unit
+mix test.integration
+mix test --only flaky
+mix test.flake.hunt      # --repeat-until-failure on quarantined tags
 mix quality.gate         # format + credo + test.ci
 ```
 
 Requires Elixir `~> 1.15` and OTP 26+.
-
----
-
-## Enable GitHub Actions
-
-The CI YAML lives at `docs/github-actions-ci.yml` because the current `gh` OAuth token lacks the `workflow` scope (GitHub blocks pushes that create `.github/workflows/*` without it).
-
-```bash
-gh auth refresh -h github.com -s workflow
-# remove the `.github/` line from .gitignore
-mkdir -p .github/workflows
-cp docs/github-actions-ci.yml .github/workflows/ci.yml
-git add .github .gitignore && git commit -m "Enable GitHub Actions quality gate" && git push
-```
 
 ---
 
@@ -64,30 +50,38 @@ git add .github .gitignore && git commit -m "Enable GitHub Actions quality gate"
 lib/elixir_qe_framework/
   appointment.ex          # pure domain
   booking_service.ex      # application service (boundary)
-  booking_store.ex        # in-memory GenServer store
+  booking_store.ex        # GenServer store (bindable per test)
   clock.ex                # injectable time
-  testing/
-    factory.ex
-    flake.ex
-    quarantine.ex
-    boundary.ex
-    reporter.ex
+  testing/                # Factory · Boundary · Flake · Quarantine · Reporter
 test/
-  unit/
-  integration/
-  infrastructure/
-  support/data_case.ex    # clears store + clock per test
+  unit/ · integration/ · infrastructure/
+  support/data_case.ex    # anonymous store + frozen clock
+docs/HOW_IT_WORKS.md
 ```
 
 ---
 
-## CI philosophy (interview talking points)
+## Criticisms we fixed (v1 → hardened)
 
-1. **Root-cause flake** — classify timing / shared state / data races; don’t “rerun until green” as policy.
-2. **Quarantine is visible debt** — `@tag :flaky` kept out of merge gate; re-run on a secondary lane.
-3. **Right layer of test** — pure units for rules; integration at the service boundary; E2E stays with QA partners.
-4. **CI as product** — `qe_gate` / `qe_flake` log lines are scrape-friendly seeds for dashboards.
-5. **AI with guardrails** — generate drafts, human-review assertions and isolation; never blind-merge.
+| Weak spot | Fix |
+|-----------|-----|
+| Shared global store + `clear/0` (async races) | Anonymous supervised store + `bind/1` |
+| No past-booking guard | `:starts_in_past` via `Clock` |
+| Factory dates rot against wall clock | `DataCase` freezes clock |
+| Dead quarantine registry | Real registry row + CI cover assertion |
+| Case-sensitive flake classify | Case-insensitive + throw catch |
+| CI workflow not on GitHub | `.github/workflows/ci.yml` restored |
+| “How it works” missing | `docs/HOW_IT_WORKS.md` |
+
+---
+
+## CI philosophy
+
+1. Root-cause flake — don’t “rerun until green” as policy.  
+2. Quarantine is visible debt (`owner` + ticket).  
+3. Right layer: unit → service boundary → E2E (QA partner).  
+4. CI as product — scrape-friendly `qe_gate` lines.  
+5. AI drafts OK — human review for waits/assertions/isolation.
 
 ---
 

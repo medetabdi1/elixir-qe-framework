@@ -8,7 +8,8 @@ defmodule ElixirQeFramework.Testing.Quarantine do
 
   @entries [
     # {test_module, description_fragment, owner, ticket, reason}
-    # Example reserved slot — none quarantined in this portfolio baseline.
+    {ElixirQeFramework.ExampleFlakyTest, "example quarantine", "medet", "QE-0",
+     "demo entry — documents registry wiring for reviewers"}
   ]
 
   @doc "Returns the quarantine registry."
@@ -37,6 +38,19 @@ defmodule ElixirQeFramework.Testing.Quarantine do
           end)
 
         Enum.join(["quarantine: #{length(list)} entries" | lines], "\n")
+    end
+  end
+
+  @doc "Raises unless every `@tag :flaky` module has a registry row (call from CI script)."
+  @spec assert_registry_covers!([module()]) :: :ok
+  def assert_registry_covers!(modules) when is_list(modules) do
+    registered = MapSet.new(@entries, fn {mod, _, _, _, _} -> mod end)
+    missing = Enum.reject(modules, &MapSet.member?(registered, &1))
+
+    if missing == [] do
+      :ok
+    else
+      raise "flaky modules missing quarantine registry entries: #{inspect(missing)}"
     end
   end
 end

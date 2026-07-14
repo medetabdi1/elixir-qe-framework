@@ -20,6 +20,7 @@ defmodule ElixirQeFramework.MixProject do
         "test.unit": :test,
         "test.integration": :test,
         "test.ci": :test,
+        "test.flake.hunt": :test,
         "quality.gate": :test
       ]
     ]
@@ -47,6 +48,7 @@ defmodule ElixirQeFramework.MixProject do
       "test.unit": ["test --exclude integration --exclude flaky"],
       "test.integration": ["test --only integration"],
       "test.ci": ["test --exclude flaky --max-failures 1"],
+      "test.flake.hunt": ["test --only flaky --repeat-until-failure 25"],
       "quality.gate": [
         "format --check-formatted",
         "credo --strict",
