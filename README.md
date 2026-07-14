@@ -22,7 +22,7 @@ Portfolio sample for **CI / test-infrastructure** ownership in Elixir: service-b
 | ExMachina-style factories | `Testing.Factory` |
 | Flake classify / hunt / quarantine registry | `Testing.Flake` + `Testing.Quarantine` |
 | Mix quality gates | `mix test.ci` / `mix quality.gate` / `mix test.flake.hunt` |
-| GitHub Actions | `.github/workflows/ci.yml` |
+| GitHub Actions | `docs/github-actions-ci.yml` (enable under `.github/workflows/` after `gh auth refresh -s workflow`) |
 
 Domain: tiny salon booking (overlap detection, confirm/cancel, reject past starts).
 
